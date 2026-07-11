@@ -1,0 +1,65 @@
+
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+    @keyframes popIn {
+      0% {
+        transform: scale(0.5);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideUp {
+      0% {
+        transform: translateY(20px);
+        opacity: 0;
+      }
+      100% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes confettiFall {
+      0% {
+        opacity: 1;
+        transform: translateY(-10px) rotate(0deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(220px) rotate(360deg);
+      }
+    }
+
+    .font-main {
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .animate-pop {
+      animation: popIn .6s cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+
+    .animate-1 {
+      animation: slideUp .5s .15s both;
+    }
+
+    .animate-2 {
+      animation: slideUp .5s .25s both;
+    }
+
+    .animate-3 {
+      animation: slideUp .5s .35s both;
+    }
+
+    .animate-4 {
+      animation: slideUp .5s .45s both;
+    }
+
+    .glass {
+      backdrop-filter: blur(12px);
+      background: rgba(255,255,255,0.85);
+    }
+  

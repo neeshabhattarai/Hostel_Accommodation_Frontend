@@ -1,6 +1,8 @@
 import { useForm } from "react-hook-form";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useAuthStore, type User } from "../auth/Authentication";
+import { JsonDecode } from "../Helper/JsonDecode";
 interface LoginData {
   email: string;
   password: string;
@@ -11,33 +13,83 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState("");
   const navigate = useNavigate();
+  const setToken = useAuthStore((state) => state.setToken);
+  const setRole = useAuthStore((state) => state.setRole);
+  const setUser = useAuthStore((state) => state.setUser);
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting }
+    formState: { errors, isSubmitting },
   } = useForm<LoginData>();
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (data: LoginData) => {
     setServerError("");
-    console.log(data);
     try {
-     const res=await fetch("http://localhost:5109/api/Login",{
-          method:"post",
-          headers:{
-            "Content-Type":"application/json"
-          },
-          body:JSON.stringify({
-            "Email":data.email,
-            "Password":data.password
-          })
+      const res = await fetch("http://localhost:5109/api/Login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          Email: data.email,
+          Password: data.password,
+        }),
       });
-      if(res.ok){
-          const message=await res.json();
-        console.log(message);
+
+      if (res.ok) {
+        const json = await res.json();
+        setToken(json.token);
+        const decodejson = JsonDecode(json.token);
+        const role =
+          decodejson[
+            "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+          ];
+        const emailaddress =
+          decodejson[
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
+          ];
+        const firstName = decodejson["FirstName"];
+        const lastName = decodejson["LastName"];
+        // const createdAt=decodejson["CreatedAt"];
+        const id =
+          decodejson[
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+          ];
+        const phone =
+          decodejson[
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobilephone"
+          ];
+        const address =
+          decodejson[
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/streetaddress"
+          ];
+        console.log(decodejson);
+
+        const user: User = {
+          id: id,
+          firstName: firstName,
+          lastName: lastName,
+          email: emailaddress,
+          role: role,
+          phone: phone,
+          address: address,
+          // createdAt: createdAt,
+        };
+        setUser(user as User);
+        setRole(role);
+        if (role === "Admin") {
+          navigate("/dashboard");
+        } else {
+          navigate("/room");
+        }
+      } else {
+        setServerError("Invalid email or password. Please try again.");
       }
     } catch (err) {
-      setServerError("Invalid email or password. Please try again.");
+      setServerError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again.",
+      );
     }
   };
 
@@ -51,7 +103,6 @@ const Login = () => {
       <div className="relative w-full max-w-lg">
         {/* Card */}
         <div className="bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl p-8">
-          
           {/* Header */}
           <div className="mb-8">
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center mb-4">
@@ -72,7 +123,11 @@ const Login = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-5"
+            noValidate
+          >
             {/* Email */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1.5">
@@ -156,7 +211,10 @@ const Login = () => {
                 className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900"
                 {...register("remember")}
               />
-              <label htmlFor="remember" className="text-sm text-slate-400 cursor-pointer">
+              <label
+                htmlFor="remember"
+                className="text-sm text-slate-400 cursor-pointer"
+              >
                 Keep me signed in
               </label>
             </div>

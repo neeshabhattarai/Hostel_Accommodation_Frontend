@@ -1,28 +1,8 @@
-import { useForm, type RegisterOptions } from "react-hook-form";
+import { FormProvider, useForm } from "react-hook-form";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
-
-interface SignupData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  password: string;
-  confirmPassword: string;
-  terms: boolean;
-}
-
-interface InputFieldProps {
-  label: string;
-  name: keyof SignupData;
-  type?: string;
-  placeholder: string;
-  rules?: RegisterOptions<SignupData>;
-  autoComplete?: string;
-  showToggle?: boolean;
-  show?: boolean;
-  setShow?: React.Dispatch<React.SetStateAction<boolean>>;
-}
+import InputField from "../ui/InputField";
+import type { SignupData } from "../types/signup.types";
 
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -30,74 +10,48 @@ const Signup = () => {
   const [serverError, setServerError] = useState("");
   const navigate = useNavigate();
 
+  const methods = useForm<SignupData>();
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<SignupData>();
+  } = methods;
 
   const password = watch("password");
 
   const onSubmit = async (data: SignupData) => {
     setServerError("");
     try {
-      console.log("Signup data:", data);
-      // await registerUser(data);
-      // navigate("/login");
+      const res = await fetch("http://localhost:5109/api/CreateUser", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          Email: data.email,
+          Password: data.password,
+          PhoneNumber: data.phone,
+          FirstName: data.firstName,
+          LastName: data.lastName,
+          Gender: data.gender,
+          Address: data.address,
+          Role: data.role,     
+        })
+      });
+
+      if (res.ok) {
+        navigate("/login");
+      } else {
+        setServerError("Something went wrong. Please try again.");
+      }
     } catch (err) {
-      setServerError("Something went wrong. Please try again.");
+      setServerError(
+        err instanceof Error ? err.message : "Something went wrong. Please try again."
+      );
     }
   };
 
-  const InputField = ({
-    label,
-    name,
-    type = "text",
-    placeholder,
-    rules,
-    autoComplete,
-    showToggle,
-    show,
-    setShow,
-  }: InputFieldProps) => (
-    <div>
-      <label className="block text-base font-medium text-slate-300 mb-2">
-        {label}
-      </label>
-      <div className="relative">
-        <input
-          type={showToggle ? (show ? "text" : "password") : type}
-          placeholder={placeholder}
-          autoComplete={autoComplete}
-          className={`w-full px-5 py-3.5 ${showToggle ? "pr-16" : ""} bg-slate-800 border rounded-lg text-white placeholder-slate-500 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-            errors[name]
-              ? "border-red-500/60 focus:ring-red-500"
-              : "border-slate-600 hover:border-slate-500"
-          }`}
-          {...register(name, rules)}
-        />
-        {showToggle && (
-          <button
-            type="button"
-            onClick={() => setShow?.(!show)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors text-sm font-medium"
-          >
-            {show ? "Hide" : "Show"}
-          </button>
-        )}
-      </div>
-      {errors[name] && (
-        <p className="mt-2 text-sm text-red-400 flex items-center gap-1">
-          <span>⚠</span> {errors[name]?.message as string}
-        </p>
-      )}
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6 py-16">
-      {/* Background glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl" />
       </div>
@@ -105,7 +59,6 @@ const Signup = () => {
       <div className="relative w-full max-w-2xl">
         <div className="bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl p-10">
 
-          {/* Header */}
           <div className="mb-8">
             <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center mb-5">
               <span className="text-white font-bold text-xl">H</span>
@@ -118,13 +71,13 @@ const Signup = () => {
             </p>
           </div>
 
-          {/* Server Error */}
           {serverError && (
             <div className="mb-6 px-5 py-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-base">
               {serverError}
             </div>
           )}
 
+          <FormProvider {...methods}>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
             {/* Name row */}
             <div className="grid grid-cols-2 gap-4">
@@ -134,22 +87,19 @@ const Signup = () => {
                 </label>
                 <input
                   type="text"
-                  placeholder="John"
+                  placeholder="Ram"
                   autoComplete="given-name"
                   className={`w-full px-5 py-3.5 bg-slate-800 border rounded-lg text-white placeholder-slate-500 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                    errors.firstName
-                      ? "border-red-500/60"
-                      : "border-slate-600 hover:border-slate-500"
+                    errors.firstName ? "border-red-500/60" : "border-slate-600 hover:border-slate-500"
                   }`}
                   {...register("firstName", {
                     required: "Required",
                     minLength: { value: 2, message: "Too short" },
+                    pattern:{value:/^[A-Za-z]+(?: [A-Za-z]+)*$/,message:"Only letters, spaces, and hyphens are allowed"}
                   })}
                 />
                 {errors.firstName && (
-                  <p className="mt-2 text-sm text-red-400">
-                    ⚠ {errors.firstName.message}
-                  </p>
+                  <p className="mt-2 text-sm text-red-400">⚠ {errors.firstName.message}</p>
                 )}
               </div>
               <div>
@@ -158,22 +108,20 @@ const Signup = () => {
                 </label>
                 <input
                   type="text"
-                  placeholder="Doe"
+                  placeholder="sharma"
                   autoComplete="family-name"
                   className={`w-full px-5 py-3.5 bg-slate-800 border rounded-lg text-white placeholder-slate-500 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                    errors.lastName
-                      ? "border-red-500/60"
-                      : "border-slate-600 hover:border-slate-500"
+                    errors.lastName ? "border-red-500/60" : "border-slate-600 hover:border-slate-500"
                   }`}
                   {...register("lastName", {
                     required: "Required",
                     minLength: { value: 2, message: "Too short" },
+                    pattern:{value:/^[A-Za-z]+(?:[- '][A-Za-z]+)*$/,message:"Only letters, spaces, and hyphens are allowed"
+}
                   })}
                 />
                 {errors.lastName && (
-                  <p className="mt-2 text-sm text-red-400">
-                    ⚠ {errors.lastName.message}
-                  </p>
+                  <p className="mt-2 text-sm text-red-400">⚠ {errors.lastName.message}</p>
                 )}
               </div>
             </div>
@@ -193,31 +141,84 @@ const Signup = () => {
                 },
               }}
             />
-
-            {/* Phone (optional) */}
             <div>
-              <label className="block text-base font-medium text-slate-300 mb-2">
-                Phone{" "}
-              </label>
+            <label className="block text-base font-medium text-slate-300 mb-2">Role</label>
+            <select
+              className={`w-full px-5 py-3.5 bg-slate-800 border rounded-lg text-white text-base transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.role ? "border-red-500/60" : "border-slate-600 hover:border-slate-500"
+              }`}
+              {...register("role", { required: "Role is required" })}
+            >
+              <option value="">Select role</option>
+              <option value="helper">Helper</option>
+              <option value="manager">Manager</option>
+              <option value="student">Student</option>
+              <option value="admin">Admin</option>
+            </select>
+            {errors.role && (
+              <p className="mt-2 text-sm text-red-400">⚠ {errors.role.message}</p>
+            )}
+          </div>
+            {/* Phone */}
+            <div>
+              <label className="block text-base font-medium text-slate-300 mb-2">Phone</label>
               <input
                 type="tel"
                 placeholder="9840000000"
                 autoComplete="tel"
-                className="w-full px-5 py-3.5 bg-slate-800 border border-slate-600 hover:border-slate-500 rounded-lg text-white placeholder-slate-500 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className={`w-full px-5 py-3.5 bg-slate-800 border rounded-lg text-white placeholder-slate-500 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                  errors.phone ? "border-red-500/60" : "border-slate-600 hover:border-slate-500"
+                }`}
                 {...register("phone", {
-                    required: "Phone is required",
-                    minLength: { value: 10, message: "Phone must be at least 10 characters" },
-                    maxLength: { value: 10, message: "Phone must be at most 10 characters" },
+                  required: "Phone is required",
+                  minLength: { value: 10, message: "Phone must be at least 10 digits" },
+                  maxLength: { value: 10, message: "Phone must be at most 10 digits" },
                   pattern: {
-                    value: /^[9]{1}[7,8]{1}[0-9]{8}$/,
-                    message: "Enter a valid phone number",
+                    value: /^[9][7,8][0-9]{8}$/,
+                    message: "Enter a valid Nepali phone number",
                   },
                 })}
               />
               {errors.phone && (
-                <p className="mt-2 text-sm text-red-400">
-                  ⚠ {errors.phone.message}
-                </p>
+                <p className="mt-2 text-sm text-red-400">⚠ {errors.phone.message}</p>
+              )}
+            </div>
+
+            {/* Gender */}
+            <div>
+              <label className="block text-base font-medium text-slate-300 mb-2">Gender</label>
+              <select
+                className={`w-full px-5 py-3.5 bg-slate-800 border rounded-lg text-white text-base transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                  errors.gender ? "border-red-500/60" : "border-slate-600 hover:border-slate-500"
+                }`}
+                {...register("gender", { required: "Gender is required" })}
+              >
+                <option value="" className="text-slate-500">Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+              {errors.gender && (
+                <p className="mt-2 text-sm text-red-400">⚠ {errors.gender.message}</p>
+              )}
+            </div>
+
+            {/* Address */}
+            <div>
+              <label className="block text-base font-medium text-slate-300 mb-2">Address</label>
+              <textarea
+                rows={3}
+                placeholder="Kathmandu, Nepal"
+                className={`w-full px-5 py-3.5 bg-slate-800 border rounded-lg text-white placeholder-slate-500 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none ${
+                  errors.address ? "border-red-500/60" : "border-slate-600 hover:border-slate-500"
+                }`}
+                {...register("address", {
+                  required: "Address is required",
+                  minLength: { value: 5, message: "Address is too short" },
+                })}
+              />
+              {errors.address && (
+                <p className="mt-2 text-sm text-red-400">⚠ {errors.address.message}</p>
               )}
             </div>
 
@@ -226,7 +227,6 @@ const Signup = () => {
               label="Password"
               name="password"
               placeholder="••••••••"
-              autoComplete="new-password"
               showToggle
               show={showPassword}
               setShow={setShowPassword}
@@ -251,8 +251,7 @@ const Signup = () => {
               setShow={setShowConfirm}
               rules={{
                 required: "Please confirm your password",
-                validate: (val) =>
-                  val === password || "Passwords do not match",
+                validate: (val) => val === password || "Passwords do not match",
               }}
             />
 
@@ -262,15 +261,10 @@ const Signup = () => {
                 id="terms"
                 type="checkbox"
                 className="mt-0.5 w-5 h-5 rounded border-slate-600 bg-slate-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900"
-                {...register("terms", {
-                  required: "You must accept the terms to continue",
-                })}
+                {...register("terms", { required: "You must accept the terms to continue" })}
               />
               <div>
-                <label
-                  htmlFor="terms"
-                  className="text-base text-slate-400 cursor-pointer leading-snug"
-                >
+                <label htmlFor="terms" className="text-base text-slate-400 cursor-pointer leading-snug">
                   I agree to the{" "}
                   <span className="text-indigo-400 hover:text-indigo-300 cursor-pointer transition-colors">
                     Terms of Service
@@ -281,9 +275,7 @@ const Signup = () => {
                   </span>
                 </label>
                 {errors.terms && (
-                  <p className="mt-1.5 text-sm text-red-400">
-                    ⚠ {errors.terms.message}
-                  </p>
+                  <p className="mt-1.5 text-sm text-red-400">⚠ {errors.terms.message}</p>
                 )}
               </div>
             </div>
@@ -304,14 +296,11 @@ const Signup = () => {
               )}
             </button>
           </form>
+          </FormProvider>
 
-          {/* Footer */}
           <p className="mt-8 text-center text-base text-slate-500">
             Already have an account?{" "}
-            <NavLink
-              to="/login"
-              className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
-            >
+            <NavLink to="/login" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
               Sign in
             </NavLink>
           </p>
