@@ -97,6 +97,10 @@ export default function BookingModal({ room, onClose }: Props) {
         nights,
         token,
       });
+      console.log(response);
+      if(response.status===400){
+        throw new Error(response.message);
+      }
   
       const result = await response.url;
       console.log(result);

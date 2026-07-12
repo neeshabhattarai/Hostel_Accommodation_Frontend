@@ -43,9 +43,10 @@ export default async function StripeBooking({
       }),
     }
   );
+const result=await response.json();
 
-  if (!response.ok) throw new Error("Failed to create Stripe session");
+  if (!response.ok) throw new Error(result.message);
 
   // Return parsed JSON so the caller can access the session URL
-  return await response.json();
+  return result;
 }

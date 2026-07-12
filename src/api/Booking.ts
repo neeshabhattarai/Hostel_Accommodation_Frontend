@@ -104,10 +104,22 @@ export const bookingApi = {
     const config = getAuthConfig();
 
     if (!config) return null;
-
+// alert(id);
     await axios.delete(
       `${BaseUrl}/DeleteBooking/${id}`,
       config
     );
+  },
+  getAllBookings: async (filters?: BookingFilters) => {
+    const config = getAuthConfig();
+    if (!config) return null;
+    const response = await axios.get(
+      `${BaseUrl}/GetAllBookings/allBooking`,
+      {
+        ...config,
+        params: filters,
+      }
+    );
+    return response.data;
   },
 };

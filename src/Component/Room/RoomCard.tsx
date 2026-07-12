@@ -72,7 +72,7 @@ export default function RoomCard({
     return (
       booking.bookingStatus === "Confirmed" &&
       today >= checkIn &&
-      today <= checkOut
+      today < checkOut
     );
   });
 
@@ -91,6 +91,33 @@ export default function RoomCard({
     : null;
 
   const isAvailable = !isBookedToday;
+
+  // ── NEW: Next upcoming booking (room is free today, but booked later) ──────
+  const upcomingBooking = room.bookings
+    ?.filter((b: any) => {
+      if (b.bookingStatus !== "Confirmed") return false;
+      const checkInRaw = b.check_In_Date || b.checkInDate;
+      if (!checkInRaw) return false;
+      const checkIn = new Date(checkInRaw);
+      if (isNaN(checkIn.getTime())) return false;
+      checkIn.setHours(0, 0, 0, 0);
+      return checkIn > today;
+    })
+    .sort((a: any, b: any) => {
+      const dateA = new Date(a.check_In_Date || a.checkInDate).getTime();
+      const dateB = new Date(b.check_In_Date || b.checkInDate).getTime();
+      return dateA - dateB;
+    })[0];
+
+  const upcomingCheckIn = upcomingBooking
+    ? new Date(
+        upcomingBooking.check_In_Date || upcomingBooking.checkInDate,
+      ).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
 
   const handleBook = () => {
     if (!isAuthenticated()) {
@@ -360,6 +387,14 @@ export default function RoomCard({
               </span>
             )}
           </div>
+
+          {/* ── NEW: UPCOMING BOOKING NOTICE (only when free today) ── */}
+          {!isBookedToday && upcomingCheckIn && (
+            <div className="flex items-center gap-1.5 text-amber-600 text-xs font-semibold mb-3">
+              <span>📅</span>
+              <span>Booked for {upcomingCheckIn}</span>
+            </div>
+          )}
 
           {/* ── PRICE SECTION ── */}
           <div className="flex justify-between items-center mb-5">

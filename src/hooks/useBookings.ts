@@ -11,8 +11,9 @@ export function useBookings(filters?: BookingFilters) {
     setLoading(true);
     setError(null);
     try {
-      const res = await bookingApi.getAll(filters);
-      setBookings(res._data);
+      const res = await bookingApi.getAllBookings(filters);
+      console.log(res);
+      setBookings(res);
     } catch (e:any) {
       setError(e.message ?? "Failed to load bookings");
     } finally {

@@ -22,5 +22,5 @@ import { useAuthStore } from "../auth/Authentication";
     state.isAuthenticated()
   );
   const role = useAuthStore().user?.role;
-  return isAuthenticated && role === "admin" ? children : <Navigate to="/pagenotfound" replace />;
+  return isAuthenticated && role === "admin" ? children : <Navigate to="/login" replace />;
 }

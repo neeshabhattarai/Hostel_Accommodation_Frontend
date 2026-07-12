@@ -64,7 +64,7 @@ export default function RoomDetailDrawer({ room, onClose, onBook }: Props) {
     if (isNaN(checkIn.getTime()) || isNaN(checkOut.getTime())) return false;
     checkIn.setHours(0, 0, 0, 0);
     checkOut.setHours(0, 0, 0, 0);
-    return today >= checkIn && today <= checkOut;
+    return today >= checkIn && today < checkOut;
   });
 
   const isBookedToday = Boolean(activeBooking);
@@ -73,6 +73,26 @@ export default function RoomDetailDrawer({ room, onClose, onBook }: Props) {
     ? new Date(
         activeBooking.check_Out_Date || activeBooking.checkOut || activeBooking.checkOutDate
       ).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    : null;
+
+  // ── NEW: Next upcoming booking (room is free today, but booked later) ──────
+  const upcomingBooking = bookings
+    .filter((b: any) => {
+      const checkInRaw = b.check_In_Date || b.checkIn || b.checkInDate;
+      if (!checkInRaw) return false;
+      const checkIn = new Date(checkInRaw);
+      if (isNaN(checkIn.getTime())) return false;
+      checkIn.setHours(0, 0, 0, 0);
+      return checkIn > today;
+    })
+    .sort((a: any, b: any) => {
+      const dateA = new Date(a.check_In_Date || a.checkIn || a.checkInDate).getTime();
+      const dateB = new Date(b.check_In_Date || b.checkIn || b.checkInDate).getTime();
+      return dateA - dateB;
+    })[0];
+
+  const upcomingCheckIn = upcomingBooking
+    ? formatDate(upcomingBooking.check_In_Date || upcomingBooking.checkIn || upcomingBooking.checkInDate)
     : null;
 
   // ── Derived values for new fields ──────────────────────────────────────────
@@ -373,6 +393,27 @@ export default function RoomDetailDrawer({ room, onClose, onBook }: Props) {
                 </div>
               </div>
               <div style={{ fontSize: "2rem" }}>🔒</div>
+            </div>
+          )}
+
+          {/* ── NEW: UPCOMING BOOKING NOTICE (only when free today) ── */}
+          {!isBookedToday && upcomingCheckIn && (
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "10px 14px",
+                borderRadius: "10px",
+                background: "rgba(245,158,11,0.12)",
+                border: "1px solid rgba(245,158,11,0.25)",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "13px",
+                color: "#f59e0b",
+              }}
+            >
+              <span>📅</span>
+              <span>Booked for {upcomingCheckIn}</span>
             </div>
           )}
 

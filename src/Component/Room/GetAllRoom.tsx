@@ -1,5 +1,5 @@
-import { useLoaderData } from "react-router-dom";
-import { useState } from "react";
+import { useLoaderData, useSearchParams } from "react-router-dom";
+import { useState, useEffect } from "react";
 import type { Room } from "../../types/room";
 import { getRoomStatus } from "../../utils/roomHelpers";
 import { useRoomFilter } from "../../hooks/useRoomFilter";
@@ -25,9 +25,13 @@ interface LoaderData {
   bookings: Booking[];
 }
 
+const PAGE_SIZE_OPTIONS = [6, 12, 24, 48];
+
+// How many numbered page buttons to show around the current page
+const PAGE_WINDOW = 2;
+
 export default function GetAllRoomUI() {
   const res = useLoaderData() as LoaderData;
-  console.log(res);
   const rooms = res;
   const bookings = res.bookings;
 
@@ -45,6 +49,33 @@ export default function GetAllRoomUI() {
   const [bestRooms, setBestRooms] =
   useState<RoomRecommendation[] | null>(null); // null = not searched yet
 
+  // ── Pagination state (synced into the URL as ?pageIndex=&pageSize=) ────────
+  // pageIndex is 1-based (matches typical API query params: pageIndex=1&pageSize=12)
+  const DEFAULT_PAGE_SIZE = PAGE_SIZE_OPTIONS[1]; // 12
+  const DEFAULT_PAGE_INDEX = 1;
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const pageIndex = Number(searchParams.get("pageIndex") ?? DEFAULT_PAGE_INDEX);
+  const pageSize = Number(searchParams.get("pageSize") ?? DEFAULT_PAGE_SIZE);
+
+  const setPageIndex = (index: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("pageIndex", String(index));
+      return next;
+    });
+  };
+
+  const setPageSize = (size: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("pageSize", String(size));
+      next.set("pageIndex", String(DEFAULT_PAGE_INDEX)); // reset to first page when page size changes
+      return next;
+    });
+  };
+
   const handleBestResults = (results: RoomRecommendation[]) => {
     setBestRooms(results);
     // Reset other filters so results are shown cleanly
@@ -58,6 +89,46 @@ export default function GetAllRoomUI() {
   // Use best-room results when available, otherwise use normal filtered list
   const filteredRooms = useRoomFilter({ rooms, search, filterStatus, sortBy });
   const displayRooms = bestRooms ?? filteredRooms;
+
+  // Reset to first page whenever the underlying result set changes
+  // (pageSize is intentionally excluded — setPageSize already resets pageIndex itself)
+  useEffect(() => {
+    setPageIndex(DEFAULT_PAGE_INDEX);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, filterStatus, sortBy, bestRooms]);
+
+  const totalItems = displayRooms.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePageIndex = Math.min(Math.max(pageIndex, 1), totalPages);
+  const startIndex = (safePageIndex - 1) * pageSize;
+  const paginatedRooms = displayRooms.slice(startIndex, startIndex + pageSize);
+
+  const goToPageIndex = (index: number) => {
+    setPageIndex(Math.min(Math.max(1, index), totalPages));
+  };
+
+  // ── Page numbers to render, e.g. [1, 2, 3, '...', 10] ───────────────────────
+  const getPageNumbers = (): (number | "...")[] => {
+    const current = safePageIndex; // already 1-based
+    const pages: (number | "...")[] = [];
+
+    const start = Math.max(1, current - PAGE_WINDOW);
+    const end = Math.min(totalPages, current + PAGE_WINDOW);
+
+    if (start > 1) {
+      pages.push(1);
+      if (start > 2) pages.push("...");
+    }
+
+    for (let p = start; p <= end; p++) pages.push(p);
+
+    if (end < totalPages) {
+      if (end < totalPages - 1) pages.push("...");
+      pages.push(totalPages);
+    }
+
+    return pages;
+  };
 
   const counts = {
     All:         rooms.filter(() => true).length,
@@ -244,25 +315,133 @@ export default function GetAllRoomUI() {
       )}
 
 <div className="room-grid">
-  {bestRooms
-    ? bestRooms.map((item) => (
-        <RoomCard
-          key={item.room.room_Id}
-          room={item.room}
-          bookings={bookings}
-          onViewDetails={setDetailRoom}
-          matchPercentage={item.matchPercentage}
-        />
-      ))
-    : filteredRooms.map((room) => (
-        <RoomCard
-          key={room.room_Id}
-          room={room}
-          bookings={bookings}
-          onViewDetails={setDetailRoom}
-        />
-      ))}
+  {paginatedRooms.map((item) =>
+    bestRooms ? (
+      <RoomCard
+        key={(item as RoomRecommendation).room.room_Id}
+        room={(item as RoomRecommendation).room}
+        bookings={bookings}
+        onViewDetails={setDetailRoom}
+        matchPercentage={(item as RoomRecommendation).matchPercentage}
+      />
+    ) : (
+      <RoomCard
+        key={(item as Room).room_Id}
+        room={item as Room}
+        bookings={bookings}
+        onViewDetails={setDetailRoom}
+      />
+    )
+  )}
 </div>
+
+      {/* ── PAGINATION ── */}
+      {totalItems > 0 && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+            margin: "28px 0 8px",
+            padding: "14px 18px",
+            background: "rgba(100,116,139,0.08)",
+            border: "1px solid rgba(100,116,139,0.2)",
+            borderRadius: "12px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "14px",
+            }}
+          >
+            {/* Page size selector */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <label style={{ fontSize: "13px", color: "#94a3b8" }}>Rooms per page</label>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(100,116,139,0.3)",
+                  background: "rgba(15,23,42,0.4)",
+                  color: "#e2e8f0",
+                  fontSize: "13px",
+                }}
+              >
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Page info */}
+            <p style={{ margin: 0, fontSize: "13px", color: "#94a3b8" }}>
+              Showing {totalItems === 0 ? 0 : startIndex + 1}–
+              {Math.min(startIndex + pageSize, totalItems)} of {totalItems}
+            </p>
+
+            {/* Page controls */}
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <button
+                onClick={() => goToPageIndex(1)}
+                disabled={safePageIndex === 1}
+                style={paginationButtonStyle(safePageIndex === 1)}
+              >
+                «
+              </button>
+              <button
+                onClick={() => goToPageIndex(safePageIndex - 1)}
+                disabled={safePageIndex === 1}
+                style={paginationButtonStyle(safePageIndex === 1)}
+              >
+                ‹ Prev
+              </button>
+
+              {/* Numbered page buttons */}
+              {getPageNumbers().map((p, i) =>
+                p === "..." ? (
+                  <span
+                    key={`ellipsis-${i}`}
+                    style={{ padding: "0 4px", color: "#64748b", fontSize: "13px" }}
+                  >
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => goToPageIndex(p)}
+                    style={pageNumberButtonStyle(p === safePageIndex)}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+
+              <button
+                onClick={() => goToPageIndex(safePageIndex + 1)}
+                disabled={safePageIndex === totalPages}
+                style={paginationButtonStyle(safePageIndex === totalPages)}
+              >
+                Next ›
+              </button>
+              <button
+                onClick={() => goToPageIndex(totalPages)}
+                disabled={safePageIndex === totalPages}
+                style={paginationButtonStyle(safePageIndex === totalPages)}
+              >
+                »
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── MODALS ── */}
       {bookingRoom && (
@@ -288,4 +467,35 @@ export default function GetAllRoomUI() {
       )}
     </div>
   );
+}
+
+function paginationButtonStyle(disabled: boolean): React.CSSProperties {
+  return {
+    padding: "6px 10px",
+    borderRadius: "8px",
+    border: "1px solid rgba(100,116,139,0.3)",
+    background: disabled ? "rgba(100,116,139,0.08)" : "rgba(99,102,241,0.15)",
+    color: disabled ? "#475569" : "#a5b4fc",
+    fontSize: "13px",
+    fontWeight: 600,
+    cursor: disabled ? "not-allowed" : "pointer",
+    transition: "background 0.2s",
+  };
+}
+
+function pageNumberButtonStyle(active: boolean): React.CSSProperties {
+  return {
+    minWidth: "30px",
+    padding: "6px 8px",
+    borderRadius: "8px",
+    border: active
+      ? "1px solid rgba(99,102,241,0.6)"
+      : "1px solid rgba(100,116,139,0.3)",
+    background: active ? "#6366f1" : "rgba(99,102,241,0.1)",
+    color: active ? "#fff" : "#a5b4fc",
+    fontSize: "13px",
+    fontWeight: 700,
+    cursor: "pointer",
+    transition: "background 0.2s",
+  };
 }

@@ -2,6 +2,7 @@ export interface Booking {
   booking_Id: number;
   check_In_Date: string;
   check_Out_Date: string;
+  bookingStatus?: string;
 }
 
 export interface Room {

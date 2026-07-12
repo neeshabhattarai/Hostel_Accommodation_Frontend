@@ -21,7 +21,7 @@ export function StatsBar({ bookings }: StatsBarProps) {
 
   const stats = [
     { label: "Total Bookings", value: String(bookings.length), icon: "📋" },
-    { label: "Total Revenue",  value: `$${revenue.toLocaleString()}`, icon: "💰" },
+    { label: "Total Revenue",  value: `NPR ${revenue.toLocaleString()}`, icon: "💰" },
     { label: "Avg Stay",       value: `${avgNights} nights`, icon: "🌙" },
     { label: "Unique Rooms",   value: String(rooms), icon: "🏨" },
   ];

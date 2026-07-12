@@ -73,7 +73,7 @@ export default function FindBestRoomModal({ onClose, onResults }: Props) {
     const loadHostels = async () => {
       try {
         const res = await hostelApi.getAll();
-  
+  console.log(res);
         setHostels(res as Hostel[]);
       } catch (err) {
         console.error(err);
@@ -251,7 +251,7 @@ export default function FindBestRoomModal({ onClose, onResults }: Props) {
     <option value="">Select Hostel</option>
 
     {hostels.map((hostel) => (
-      <option key={hostel.id} value={hostel.id}>
+      <option key={hostel.hostelId} value={hostel.hostelId}>
         {hostel.name} - {hostel.address}
       </option>
     ))}

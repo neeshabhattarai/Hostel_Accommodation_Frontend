@@ -19,6 +19,7 @@ const Navbar = () => {
   const userName = (useAuthStore()?.user?.firstName ?? "") + " " + (useAuthStore()?.user?.lastName ?? "");
   const userEmail = useAuthStore()?.user?.email ?? "";
 
+
   // Derive initials from name
   const initials = userName
     .split(" ")
@@ -30,8 +31,9 @@ const Navbar = () => {
   const handleLogout = () => {
     
     setShowLogoutAlert(false);
-    navigate("/login");
     clearToken();
+    navigate("/login");
+    
   };
 
   // --- Auto logout after 30 minutes of inactivity ---
@@ -44,8 +46,8 @@ const Navbar = () => {
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       idleTimerRef.current = setTimeout(() => {
        
-        navigate("/login");
         clearToken();
+        navigate("/login");
       }, IDLE_TIMEOUT_MS);
     };
 

@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import {GetAllRoom} from "../../../api/RoomApi"
-import type { Room } from "../../../types/room";
+import type { Booking, Room } from "../../../types/room";
 import RoomCard from "../../Room/RoomCard";
 
 const RoomsSection= () => {
   const [displayRoom,setRooms]=useState<Room[]>([]);
   useEffect(()=>{
     const fetchRoom=async()=>{
-  const allRoom=(await GetAllRoom()).data._data;
+  const allRoom=(await GetAllRoom(1,100)).data._data;
   setRooms(allRoom);
     };
     fetchRoom();
@@ -18,16 +18,25 @@ const RoomsSection= () => {
   }
   const today=new Date();
   today.setHours(0,0,0,0);
-  const filterRoom=displayRoom.filter((v)=>{
-    const isOccupied=v.bookings.some((y)=>{
-  const checkIn=new Date(y.check_In_Date);
-  checkIn.setHours(0,0,0,0);
-  const checkOut=new Date(y.check_Out_Date);
-  checkOut.setHours(0,0,0,0);
-return (today>=checkIn && today<checkOut);
-  })
-  return isOccupied;
-});
+  // console.log(displayRoom);
+  const filterRoom = displayRoom.filter((room: Room) =>
+    room.bookings.length==0?
+       true:
+    
+    room.bookings.some((booking: Booking) => {
+      const checkInDate = new Date(booking.checkInDate);
+      checkInDate.setHours(0, 0, 0, 0);
+  
+      const checkOutDate = new Date(booking.checkOutDate);
+      checkOutDate.setHours(0, 0, 0, 0);
+  
+      return (
+        booking.bookingStatus !== "Confirmed" &&
+        (today < checkInDate && today > checkOutDate)
+      );
+    })
+  );
+console.log(filterRoom);
  const rooms=filterRoom.length==0?[]:filterRoom;
   
   return(
@@ -41,10 +50,11 @@ return (today>=checkIn && today<checkOut);
           Pick your perfect room.
         </h2>
       </div>
-      {rooms.length==0?<p className="text-red-500 justify-center  text-xl font-bold">Currently room not available</p>:<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {rooms.slice(0,3).map((r: Room) => (
+      {rooms.length==0?<p className="text-red-500 justify-center text-xl font-bold">Currently room not available</p>:<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+       <div className="flex gap-8"> {rooms.slice(0,3).map((r: Room) => (
           <RoomCard room={r} />
         ))}
+        </div>
       </div>}
     </div>
   </section>

@@ -4,7 +4,7 @@ import MainPage from "./Component/MainPage";
 import Signup from "./Component/SIgnup";
 
 import {ProtectedRoute,AdminProtectedRoute} from "./Component/ProtectedRoute";
-import { GetAllRoom } from "./api/RoomApi";
+import { GetAllRoom, GetAllRooms } from "./api/RoomApi";
 import GetAllRoomUI from "./Component/Room/GetAllRoom";
 import PaymentSuccessPage from "./Component/payment/PaymentSuccessPage";
 import HostelMain from "./Component/Hostel/HostelMain";
@@ -12,13 +12,13 @@ import HomePage from "./Component/HostelHome/HomePage";
 import {BookingDetailTableForUser} from "./Component/Room/BookingTable";
 import BookingApp from "./Booking/Admin/BookingApp";
 import HostelDashboard from "./Booking/Admin/Dashboard/HostelDashboard";
-import { bookingApi } from "./api/Booking";
 import RoomManagement from "./Component/Room/RoomUI";
 import ProfileEdit from "./Component/Profile/ProfileEdit";
 import ProfileView from "./Component/Profile/ProfileView";
 import PageNotFound from "./Component/pagenotfound/PageNotFound";
 import Contact from "./Component/Contact";
 import About from "./Component/About";
+import { bookingApi } from "./api/Booking";
 export const Routing = createBrowserRouter([
   {
     path: "/",
@@ -40,8 +40,8 @@ export const Routing = createBrowserRouter([
       {
         path: "allroom",
         loader:async()=>{
-          const room=await GetAllRoom().then(res=>res.data);
-          return room._data;
+          const res=await GetAllRooms();      
+          return res?.data?? [];
         },
         element:<AdminProtectedRoute>
           <RoomManagement/>
@@ -49,8 +49,11 @@ export const Routing = createBrowserRouter([
       },
       {
         path: "room",
-        loader:async()=>{
-          const res=await GetAllRoom();
+        loader:async({request})=>{
+          const url = new URL(request.url);
+          const pageNumber = Number(url.searchParams.get("pageNumber") ?? 1);
+          const pageSize = Number(url.searchParams.get("pageSize") ?? 12);
+          const res=await GetAllRoom(pageNumber,pageSize);
           return res?.data?._data ?? [];
         },
         Component:GetAllRoomUI,
@@ -65,13 +68,13 @@ export const Routing = createBrowserRouter([
           </AdminProtectedRoute>
         ),
         loader:async()=>{
-          const rooms=await GetAllRoom().then((res)=>res.data);
-          console.log(rooms);
-          const bookings=await bookingApi.getAll().then(res=>res._data);
+          const res=await GetAllRooms();
+          const bookings=await bookingApi.getAllBookings();
+          console.log(bookings);
           return {
-            rooms:rooms._data,
-            bookings
-          }
+            rooms:res?.data??[],
+            bookings:bookings??[],
+          };
         }
       },
       {
@@ -116,10 +119,10 @@ export const Routing = createBrowserRouter([
           <HostelMain/>
         </AdminProtectedRoute>
       },
-      {path:"/contact",
+      {path:"contact",
         element:<Contact/>
       },
-      {path:"/about",
+      {path:"about",
         element:<About/>
       }
     ],

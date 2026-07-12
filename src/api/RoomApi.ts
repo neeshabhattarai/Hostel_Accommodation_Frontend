@@ -16,9 +16,9 @@ async function PostRoom({body}:{body:FormData}) {
 }
 }
 
-async function GetAllRoom() {
+async function GetAllRoom(pageNumber:number,pageSize:number) {
 
-   const response=await axios.get(BaseUrl+"/Room/GetAllRooms?pageSize=10&pageIndex=1",{
+   const response=await axios.get(BaseUrl+`/Room/GetAllRooms?pageSize=${pageSize}&pageIndex=${pageNumber}`,{
         headers:{
             "Content-Type":"application/json"
         }
@@ -26,7 +26,14 @@ async function GetAllRoom() {
     return response;
 
 }
-
+async function GetAllRooms() {
+  const response=await axios.get(BaseUrl+"/Room/GetAllRooms/allRoom",{
+    headers:{
+      "Content-Type":"application/json"
+    }
+  })
+  return response;
+}
 async function DeleteRoom(id:string) {
     const headers=getAuthConfig();
     const response=await axios.delete(BaseUrl+`/Room/DeleteRoom/${id}`,{
@@ -43,4 +50,4 @@ headers:{
      })
      return response;
  }
-export {PostRoom,GetAllRoom,DeleteRoom,FindBestRoomApi};
+export {PostRoom,GetAllRoom,DeleteRoom,FindBestRoomApi,GetAllRooms};

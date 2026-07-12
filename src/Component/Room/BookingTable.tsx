@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { bookingApi } from "../../api/Booking";
 import type { BookingFormData } from "./BookingModal";
 import { useAuthStore } from "../../auth/Authentication";
@@ -90,6 +91,15 @@ function BookingRow({ booking, index, handleCancel }: { booking: Booking; index:
   const canCancel =
     booking.bookingStatus === "Pending" &&
     new Date(booking.checkInDate) > today;
+  //check if the check in date is in the past
+        const isPreviousDate=(checkInDate:string)=>{
+          const checkInDateObj=new Date(checkInDate);
+          checkInDateObj.setHours(0, 0, 0, 0);
+          const today=new Date();
+          today.setHours(0, 0, 0, 0);
+          console.log(checkInDateObj.getTime()<today.getTime());
+          return checkInDateObj.getTime()<today.getTime();
+        }
 
   // console.log(booking);
   const HandleBooking = async (e: React.MouseEvent) => {
@@ -186,12 +196,12 @@ function BookingRow({ booking, index, handleCancel }: { booking: Booking; index:
         <td className="py-3.5 pr-4 flex gap-2">
           <button
             className={`${
-              booking.bookingStatus === "Confirmed"
+              booking.bookingStatus === "Confirmed" || isPreviousDate(booking.checkInDate)
                 ? "bg-slate-400"
                 : "bg-blue-400"
             } px-5 py-2 rounded text-white`}
             onClick={HandleBooking}
-            disabled={booking.paymentStatus === "Confirmed"}
+            disabled={booking.paymentStatus === "Confirmed" || isPreviousDate(booking.checkInDate)}
           >
             Book
           </button>
@@ -305,10 +315,140 @@ function BookingRow({ booking, index, handleCancel }: { booking: Booking; index:
   );
 }
 
-export  function BookingDetailTableForUser() {
+// ── Pagination defaults & helpers ─────────────────────────────────────────
+const DEFAULT_PAGE_INDEX = 1; // 1-based, shown in the URL as ?page=
+const DEFAULT_PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
+
+function PaginationBar({
+  pageIndex,
+  pageSize,
+  totalItems,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  pageIndex: number;
+  pageSize: number;
+  totalItems: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
+}) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const startItem = totalItems === 0 ? 0 : (pageIndex - 1) * pageSize + 1;
+  const endItem = Math.min(pageIndex * pageSize, totalItems);
+
+  const canPrev = pageIndex > 1;
+  const canNext = pageIndex < totalPages;
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 px-1">
+      <div className="text-xs text-slate-500">
+        Showing <span className="text-slate-300 font-medium">{startItem}</span>–
+        <span className="text-slate-300 font-medium">{endItem}</span> of{" "}
+        <span className="text-slate-300 font-medium">{totalItems}</span>
+      </div>
+
+      <div className="flex items-center gap-3">
+        {/* Page size selector */}
+        <label className="flex items-center gap-2 text-xs text-slate-500">
+          Rows per page
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSizeChange(Number(e.target.value))}
+            className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {/* Prev / page indicator / Next */}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            disabled={!canPrev}
+            onClick={() => onPageChange(pageIndex - 1)}
+            className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-700 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 transition-colors"
+            aria-label="Previous page"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          <span className="text-xs text-slate-400 px-2 min-w-[70px] text-center">
+            Page {pageIndex} of {totalPages}
+          </span>
+
+          <button
+            type="button"
+            disabled={!canNext}
+            onClick={() => onPageChange(pageIndex + 1)}
+            className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-700 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 transition-colors"
+            aria-label="Next page"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function BookingDetailTableForUser() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // ── URL-driven pagination state ──────────────────────────────────────────
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const rawPage = parseInt(searchParams.get("page") ?? "", 10);
+  const rawSize = parseInt(searchParams.get("pageSize") ?? "", 10);
+
+  const pageIndex =
+    Number.isFinite(rawPage) && rawPage > 0 ? rawPage : DEFAULT_PAGE_INDEX;
+  const pageSize =
+    Number.isFinite(rawSize) && PAGE_SIZE_OPTIONS.includes(rawSize)
+      ? rawSize
+      : DEFAULT_PAGE_SIZE;
+
+  const updateParams = (next: { page?: number; pageSize?: number }) => {
+    const params = new URLSearchParams(searchParams);
+    if (next.page !== undefined) params.set("page", String(next.page));
+    if (next.pageSize !== undefined) params.set("pageSize", String(next.pageSize));
+    setSearchParams(params);
+  };
+
+  const handlePageChange = (page: number) => {
+    updateParams({ page });
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    // Changing page size resets back to page 1 to avoid landing on an empty page
+    updateParams({ page: 1, pageSize: size });
+  };
+
+  const totalPages = Math.max(1, Math.ceil(bookings.length / pageSize));
+
+  // Clamp page index into range once bookings/pageSize are known
+  useEffect(() => {
+    if (bookings.length === 0) return;
+    if (pageIndex > totalPages) {
+      updateParams({ page: totalPages });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookings.length, pageSize]);
+
+  const paginatedBookings = bookings.slice(
+    (pageIndex - 1) * pageSize,
+    (pageIndex - 1) * pageSize + pageSize
+  );
 
   const HandleCancel = async (bookingId: string) => {
     try {
@@ -419,12 +559,26 @@ export  function BookingDetailTableForUser() {
             </tr>
           </thead>
           <tbody>
-            {bookings.map((booking, i) => (
-              <BookingRow key={booking.bookingId} booking={booking} index={i} handleCancel={HandleCancel} />
+            {paginatedBookings.map((booking, i) => (
+              <BookingRow
+                key={booking.bookingId}
+                booking={booking}
+                index={(pageIndex - 1) * pageSize + i}
+                handleCancel={HandleCancel}
+              />
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Pagination controls */}
+      <PaginationBar
+        pageIndex={pageIndex}
+        pageSize={pageSize}
+        totalItems={bookings.length}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+      />
 
       <p className="mt-3 text-xs text-slate-600 text-right">
         Click any row to expand full details
