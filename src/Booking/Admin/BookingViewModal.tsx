@@ -26,6 +26,7 @@ function Row({ label, value, accent }: RowProps) {
 }
 
 export function BookingViewModal({ booking: b, onClose, onEdit }: BookingViewModalProps) {
+  console.log(b);
   return (
     <div className="p-6">
       {/* Header */}
@@ -52,7 +53,7 @@ export function BookingViewModal({ booking: b, onClose, onEdit }: BookingViewMod
 
         <div className="bg-gray-50 rounded-xl p-4">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Room &amp; Payment</p>
-          <Row label="Room ID"        value={`#${b.roomId}`} />
+          <Row label="Room ID"        value={`#${b.room.room_Id}`} />
           <Row label="Price / Night"  value={`$${b.roomPrice}`} />
           <Row label="Total Payment"  value={`$${b.totalPayments}`} accent />
         </div>

@@ -63,16 +63,24 @@ export const bookingApi = {
   create: async (data: BookingFormData) => {
     const config = getAuthConfig();
 
-    if (!config) return null;
+    if (!config) {
+      throw new Error("Not authenticated");
+    }
 
-    const response = await axios.post(
-      `${BaseUrl}/CreateBooking`,
-      data,
-      config
-    );
+    try {
+      const response = await axios.post(
+        `${BaseUrl}/CreateBooking`,
+        data,
+        config
+      );
 
-    return response.data;
+      return response;
+    } catch (error) {
+      // Re-throw the axios error
+      throw error;
+    }
   },
+
 
   update: async (
     id: string,

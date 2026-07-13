@@ -105,6 +105,7 @@ function BookingRow({ b, room }: { b: Booking; room?: Room }) {
   return (
     <tr className="hover:bg-slate-50 transition">
       <td className="px-4 py-2 font-medium text-slate-700">{b.bookingId}</td>
+      <td className="px-4 py-2 text-slate-600">{b.customerName}</td>
       <td className="px-4 py-2 text-slate-600">{room?.room_Id ?? "-"}</td>
 
       <td className="px-4 py-2 text-slate-600">{room?.roomType ?? "-"}</td>
@@ -392,6 +393,7 @@ export default function HostelDashboard() {
           <thead>
             <tr className="bg-slate-50 text-left text-xs text-slate-500">
               <th className="p-3">Booking</th>
+              <th>Customer</th>
               <th>Room</th>
               <th>Type</th>
               <th>Status</th>

@@ -26,10 +26,12 @@ interface ActionBtnProps {
 
 /* ── Helpers ───────────────────────────────────────────────────────── */
 const COLS = [
+
   "Booking ID",
   "Booked On",
   "Check-in",
   "Check-out",
+  "Status",
   "Room",
   "Nights",
   "Price / Night",
@@ -123,10 +125,15 @@ function BookingRow({ b, onView, onEdit, onDelete }: BookingRowProps): JSX.Eleme
         {fmtDate(b.checkOutDate)}
       </td>
 
+      {/* Status */}
+      <td className={`px-4 py-3 text-sm text-gray-700 whitespace-nowrap  ${b.bookingStatus === "Pending" ? "text-yellow-500" : b.bookingStatus === "Confirmed" ? "text-green-500" : b.bookingStatus === "Completed" ? "text-green-500" : b.bookingStatus === "Cancelled" ? "text-red-500" : ""}`}>
+        {b.bookingStatus}
+      </td>
+
       {/* Room */}
       <td className="px-4 py-3 whitespace-nowrap">
         <span className="bg-gray-100 border border-gray-200 text-gray-700 text-xs font-medium px-2 py-1 rounded">
-          #{b.roomId}
+          #{b.room.room_Id}
         </span>
       </td>
 

@@ -103,7 +103,7 @@ export default function BookingModal({ room, onClose }: Props) {
       }
   
       const result = await response.url;
-      console.log(result);
+      // console.log(result);
     
       // if (!response.url) {
       //   throw new Error(
@@ -114,7 +114,7 @@ export default function BookingModal({ room, onClose }: Props) {
       // }
   
       if (!result) {
-        throw new Error("Stripe URL was not returned by the server.");
+        throw new Error(response.message||"Stripe URL was not returned by the server.");
       }
   
       if (!result.includes("stripe.com")) {
