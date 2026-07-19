@@ -47,14 +47,16 @@ export default function RoomDetailDrawer({ room, onClose, onBook }: Props) {
     [images.length]
   );
 
-  console.log(room);
-
   // Safe bookings array
   const bookings = room.bookings ?? [];
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // Room is considered booked/unavailable ONLY when today falls
+  // anywhere between check-in and check-out, INCLUSIVE of both
+  // endpoints — i.e. checkin-is-today, checkout-is-today, or any
+  // day strictly between. This drives the disabled Book button.
   const activeBooking = bookings.find((b: any) => {
     const checkInRaw  = b.check_In_Date  || b.checkIn  || b.checkInDate;
     const checkOutRaw = b.check_Out_Date || b.checkOut || b.checkOutDate;
@@ -64,38 +66,12 @@ export default function RoomDetailDrawer({ room, onClose, onBook }: Props) {
     if (isNaN(checkIn.getTime()) || isNaN(checkOut.getTime())) return false;
     checkIn.setHours(0, 0, 0, 0);
     checkOut.setHours(0, 0, 0, 0);
-    return today >= checkIn && today < checkOut;
+    return today >= checkIn && today <= checkOut;
   });
 
   const isBookedToday = Boolean(activeBooking);
 
-  const bookedTill = activeBooking
-    ? new Date(
-        activeBooking.check_Out_Date || activeBooking.checkOut || activeBooking.checkOutDate
-      ).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-    : null;
-
-  // ── NEW: Next upcoming booking (room is free today, but booked later) ──────
-  const upcomingBooking = bookings
-    .filter((b: any) => {
-      const checkInRaw = b.check_In_Date || b.checkIn || b.checkInDate;
-      if (!checkInRaw) return false;
-      const checkIn = new Date(checkInRaw);
-      if (isNaN(checkIn.getTime())) return false;
-      checkIn.setHours(0, 0, 0, 0);
-      return checkIn > today;
-    })
-    .sort((a: any, b: any) => {
-      const dateA = new Date(a.check_In_Date || a.checkIn || a.checkInDate).getTime();
-      const dateB = new Date(b.check_In_Date || b.checkIn || b.checkInDate).getTime();
-      return dateA - dateB;
-    })[0];
-
-  const upcomingCheckIn = upcomingBooking
-    ? formatDate(upcomingBooking.check_In_Date || upcomingBooking.checkIn || upcomingBooking.checkInDate)
-    : null;
-
-  // ── Derived values for new fields ──────────────────────────────────────────
+  // Derived values for room info fields
   const floorLabel    = room.floor ? (FLOOR_LABELS[room.floor] ?? room.floor) : null;
   const occupancy     = room.currentOccupancy ?? 0;
   const capacity      = room.capacity ?? 0;
@@ -104,6 +80,13 @@ export default function RoomDetailDrawer({ room, onClose, onBook }: Props) {
     occupancyPct >= 100 ? "#ef4444" :
     occupancyPct >= 75  ? "#f59e0b" :
                           "#10b981";
+
+  // Bookings sorted chronologically for the history list
+  const sortedBookings = bookings.slice().sort((a: any, b: any) => {
+    const dateA = new Date(a.check_In_Date || a.checkIn || a.checkInDate).getTime();
+    const dateB = new Date(b.check_In_Date || b.checkIn || b.checkInDate).getTime();
+    return dateA - dateB;
+  });
 
   return (
     <div
@@ -227,6 +210,28 @@ export default function RoomDetailDrawer({ room, onClose, onBook }: Props) {
                     </div>
                   </>
                 )}
+
+                {/* ── Booked ribbon on the image itself (only when actively booked, no icon) ── */}
+                {isBookedToday && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "10px",
+                      left: "10px",
+                      zIndex: 10,
+                      background: "rgba(220,38,38,0.92)",
+                      color: "#fff",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      letterSpacing: "0.02em",
+                      padding: "4px 10px",
+                      borderRadius: "999px",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+                    }}
+                  >
+                    Booked
+                  </div>
+                )}
               </>
             ) : (
               <div className="detail-image-placeholder">
@@ -287,7 +292,6 @@ export default function RoomDetailDrawer({ room, onClose, onBook }: Props) {
               <span className="info-value mono">{room.room_Id}</span>
             </div>
 
-            {/* ── NEW: Room Type ── */}
             {room.roomType && (
               <div className="info-item">
                 <span className="info-label">Room Type</span>
@@ -301,7 +305,6 @@ export default function RoomDetailDrawer({ room, onClose, onBook }: Props) {
               </div>
             )}
 
-            {/* ── NEW: Floor ── */}
             {floorLabel && (
               <div className="info-item">
                 <span className="info-label">Floor</span>
@@ -315,7 +318,6 @@ export default function RoomDetailDrawer({ room, onClose, onBook }: Props) {
               </div>
             )}
 
-            {/* ── NEW: Capacity ── */}
             {capacity > 0 && (
               <div className="info-item">
                 <span className="info-label">Capacity</span>
@@ -329,7 +331,6 @@ export default function RoomDetailDrawer({ room, onClose, onBook }: Props) {
               </div>
             )}
 
-            {/* ── NEW: Current Occupancy ── */}
             {capacity > 0 && (
               <div className="info-item">
                 <span className="info-label">Occupancy</span>
@@ -344,7 +345,7 @@ export default function RoomDetailDrawer({ room, onClose, onBook }: Props) {
             )}
           </div>
 
-          {/* ── NEW: Occupancy progress bar ── */}
+          {/* ── Occupancy progress bar ── */}
           {capacity > 0 && (
             <div style={{ marginTop: "4px", marginBottom: "8px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
@@ -375,65 +376,94 @@ export default function RoomDetailDrawer({ room, onClose, onBook }: Props) {
             <p className="info-value">{room.room_Description}</p>
           </div>
 
-          {/* ── BOOKED STATUS ── */}
-          {isBookedToday && (
-            <div
-              style={{
-                marginTop: "20px", padding: "16px", borderRadius: "14px",
-                background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)",
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-              }}
-            >
-              <div>
-                <div style={{ color: "#ef4444", fontSize: "12px", fontWeight: 700, textTransform: "uppercase" }}>
-                  Currently Booked
-                </div>
-                <div style={{ marginTop: "6px", color: "#fff" }}>
-                  Available after <strong>{bookedTill}</strong>
-                </div>
-              </div>
-              <div style={{ fontSize: "2rem" }}>🔒</div>
-            </div>
-          )}
-
-          {/* ── NEW: UPCOMING BOOKING NOTICE (only when free today) ── */}
-          {!isBookedToday && upcomingCheckIn && (
-            <div
-              style={{
-                marginTop: "12px",
-                padding: "10px 14px",
-                borderRadius: "10px",
-                background: "rgba(245,158,11,0.12)",
-                border: "1px solid rgba(245,158,11,0.25)",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "13px",
-                color: "#f59e0b",
-              }}
-            >
-              <span>📅</span>
-              <span>Booked for {upcomingCheckIn}</span>
-            </div>
-          )}
-
-          {/* ── BOOKING HISTORY ── */}
+          {/* ── BOOKING HISTORY / RESERVED DATES ──
+              This is now the single place reserved date ranges are shown.
+              Every booking's checkin → checkout is listed with a calendar
+              icon, so anyone viewing the room can see all periods it's
+              reserved for — not just the currently active one. */}
           <div className="section">
             <h4 className="section-title">Booking History ({bookings.length})</h4>
             {bookings.length === 0 ? (
               <div className="empty-state">No bookings yet</div>
             ) : (
               <div className="booking-list">
-                {bookings.map((b: any, i: number) => (
-                  <div key={b.booking_Id ?? i} className="booking-item">
-                    <div className="booking-dates">
-                      <span>{formatDate(b.check_In_Date || b.checkIn || b.checkInDate)}</span>
-                      <span>→</span>
-                      <span>{formatDate(b.check_Out_Date || b.checkOut || b.checkOutDate)}</span>
+                {sortedBookings.map((b: any, i: number) => {
+                  const checkInRaw = b.check_In_Date || b.checkIn || b.checkInDate;
+                  const checkInDate = checkInRaw ? new Date(checkInRaw) : null;
+                  if (checkInDate) checkInDate.setHours(0, 0, 0, 0);
+                  const isUpcoming = Boolean(checkInDate && !isNaN(checkInDate.getTime()) && checkInDate > today);
+                  const isConfirmed = String(b.bookingStatus ?? "").toLowerCase() === "confirmed";
+                  const highlight = isUpcoming && isConfirmed;
+
+                  return (
+                    <div
+                      key={b.booking_Id ?? i}
+                      className="booking-item"
+                      style={
+                        highlight
+                          ? {
+                              background: "rgba(16,185,129,0.10)",
+                              border: "1px solid rgba(16,185,129,0.35)",
+                              borderRadius: "10px",
+                            }
+                          : undefined
+                      }
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        {/* Line 1 — calendar + date range */}
+                        <div className="booking-dates" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span role="img" aria-label="calendar">📅</span>
+                          <span>
+                            Booked for {formatDate(checkInRaw)} to{" "}
+                            {formatDate(b.check_Out_Date || b.checkOut || b.checkOutDate)}
+                          </span>
+                        </div>
+
+                        {/* Line 2 — confirmed status (with checkmark) + upcoming badge */}
+                        {isConfirmed && (
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                fontSize: "11px",
+                                fontWeight: 600,
+                                color: "#10b981",
+                              }}
+                            >
+                              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="#10b981" style={{ flexShrink: 0 }}>
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Confirmed
+                            </span>
+
+                            {highlight && (
+                              <span
+                                style={{
+                                  fontSize: "10px",
+                                  fontWeight: 700,
+                                  color: "#10b981",
+                                  background: "rgba(16,185,129,0.15)",
+                                  padding: "2px 7px",
+                                  borderRadius: "999px",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.04em",
+                                }}
+                              >
+                                Upcoming
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {!isConfirmed && (
+                        <span className="booking-status-tag">{b.status ?? "Pending"}</span>
+                      )}
                     </div>
-                    <span className="booking-status-tag">{b.status ?? "Pending"}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -461,24 +491,31 @@ export default function RoomDetailDrawer({ room, onClose, onBook }: Props) {
           </div>
         </div>
 
-        {/* ── FOOTER ── */}
+        {/* ── FOOTER ──
+            Book button is disabled ONLY when today is on/between an
+            existing booking's checkin and checkout — never based on the
+            general room `status` alone. */}
         <div className="drawer-footer">
           {isBookedToday ? (
             <button
               className="btn full-width"
               disabled
-              style={{ background: "#dc2626", color: "#fff", cursor: "not-allowed" }}
+              style={{
+                background: "rgba(220,38,38,0.9)",
+                color: "#fff",
+                cursor: "not-allowed",
+              }}
             >
-              Booked Until {bookedTill}
+              Currently Booked
             </button>
-          ) : status === "Available" ? (
+          ) : (
             <button
               className="btn btn-primary full-width"
               onClick={() => { onClose(); onBook(room); }}
             >
               Book This Room · Rs {room.room_Price.toLocaleString()}/night
             </button>
-          ) : null}
+          )}
         </div>
       </div>
     </div>
