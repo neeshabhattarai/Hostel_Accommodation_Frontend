@@ -87,7 +87,7 @@ export default function ProfileEdit() {
     setSaving(true);
     setServerError("");
     try {
-      await userApi.updateUser({ firstName: data.firstName, lastName: data.lastName, email: data.email, phonenumber: data.phone, address: data.address, id: store.id, role: store.role });
+      await userApi.updateUser({ firstName: data.firstName, lastName: data.lastName, email: data.email, phonenumber: data.phone, address: data.address, id: store.id, role: store.role,oldPassword: data.currentPassword, password: data.newPassword});
     //   if (data.newPassword) await userApi.changePassword({ currentPassword: data.currentPassword, newPassword: data.newPassword });
       await new Promise((r) => setTimeout(r, 900)); // mock delay
       setSaved(true);
