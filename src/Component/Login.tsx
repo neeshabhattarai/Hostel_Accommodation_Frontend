@@ -76,7 +76,8 @@ const Login = () => {
         };
         setUser(user as User);
         setRole(role);
-        if (role === "Admin") {
+
+        if (role === "admin") {
           navigate("/dashboard");
         } else {
           navigate("/room");

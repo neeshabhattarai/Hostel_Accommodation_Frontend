@@ -6,7 +6,12 @@ interface StatsBarProps {
 }
 
 export function StatsBar({ bookings }: StatsBarProps) {
-  const revenue = bookings.reduce((s, b) => s + b["room"].room_Price, 0);
+  const revenue = bookings.reduce((s, b) => {
+    if(b.bookingStatus === "Confirmed"){
+      return s + b["room"].room_Price;
+    }
+    return s;
+  }, 0);
   const avgNights = bookings.length
   ? (
       bookings.reduce((s, b) => {

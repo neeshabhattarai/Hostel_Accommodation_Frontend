@@ -137,7 +137,7 @@ export function HostelForm({
         <input
           id="name"
           type="text"
-          placeholder="Jane Smith"
+          placeholder="Enter hostel name"
           style={inputStyle(!!errors.name)}
           aria-invalid={!!errors.name}
           {...register("name", {
@@ -169,7 +169,7 @@ export function HostelForm({
       >
         <textarea
           id="address"
-          placeholder="123 Main St, City, State 00000"
+          placeholder="Kathmandu, Nepal"
           style={{
             ...inputStyle(
               !!errors.address
@@ -184,7 +184,7 @@ export function HostelForm({
             required:
               "Address is required",
             minLength: {
-              value: 10,
+              value: 6,
               message:
                 "Please enter a full address",
             },
@@ -219,7 +219,7 @@ export function HostelForm({
                 "Phone number is required",
               pattern: {
                 value:
-                  /^\+?[\d\s\-().]{7,20}$/,
+                  /^[9]{1}[8,7]{1}[0-9]{8}$/,
                 message:
                   "Enter a valid phone number",
               },
